@@ -4,6 +4,7 @@ from datetime import timedelta
 import logging
 from unittest.mock import ANY, Mock, patch
 
+from aioesphomeapi import EntityCategory
 import pytest
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, PERCENTAGE
@@ -1151,7 +1152,7 @@ async def test_entity_info_added_to_entity_registry(hass):
     entity_default = MockEntity(
         capability_attributes={"max": 100},
         device_class="mock-device-class",
-        entity_category="config",
+        entity_category=EntityCategory.CONFIG,
         icon="nice:icon",
         name="best name",
         supported_features=5,
@@ -1170,7 +1171,7 @@ async def test_entity_info_added_to_entity_registry(hass):
         "test_domain",
         capabilities={"max": 100},
         device_class=None,
-        entity_category="config",
+        entity_category=EntityCategory.CONFIG,
         icon=None,
         id=ANY,
         name=None,
