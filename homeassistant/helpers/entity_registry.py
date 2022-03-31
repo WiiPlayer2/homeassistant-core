@@ -100,16 +100,6 @@ DISABLED_INTEGRATION = RegistryEntryDisabler.INTEGRATION.value
 DISABLED_USER = RegistryEntryDisabler.USER.value
 
 
-def _convert_to_entity_category(
-    value: EntityCategory | str | None, raise_report: bool = True
-) -> EntityCategory | None:
-    """Force incoming entity_category to be an enum."""
-    # pylint: disable=import-outside-toplevel
-    from .entity import convert_to_entity_category
-
-    return convert_to_entity_category(value, raise_report=raise_report)
-
-
 @attr.s(slots=True, frozen=True)
 class RegistryEntry:
     """Entity Registry Entry."""
@@ -124,9 +114,7 @@ class RegistryEntry:
     device_id: str | None = attr.ib(default=None)
     domain: str = attr.ib(init=False, repr=False)
     disabled_by: RegistryEntryDisabler | None = attr.ib(default=None)
-    entity_category: EntityCategory | None = attr.ib(
-        default=None, converter=_convert_to_entity_category
-    )
+    entity_category: EntityCategory | None = attr.ib(default=None)
     hidden_by: RegistryEntryHider | None = attr.ib(default=None)
     icon: str | None = attr.ib(default=None)
     id: str = attr.ib(factory=uuid_util.random_uuid_hex)
@@ -348,8 +336,7 @@ class EntityRegistry:
         capabilities: Mapping[str, Any] | None = None,
         config_entry: ConfigEntry | None = None,
         device_id: str | None = None,
-        # Type str (ENTITY_CATEG*) is deprecated as of 2021.12, use EntityCategory
-        entity_category: EntityCategory | str | None = None,
+        entity_category: EntityCategory | None = None,
         original_device_class: str | None = None,
         original_icon: str | None = None,
         original_name: str | None = None,
@@ -406,13 +393,18 @@ class EntityRegistry:
         ):
             disabled_by = RegistryEntryDisabler.INTEGRATION
 
+        from .entity import EntityCategory  # pylint: disable=import-outside-toplevel
+
+        if entity_category and not isinstance(entity_category, EntityCategory):
+            raise ValueError("entity_category must be a valid EntityCategory instance")
+
         entry = RegistryEntry(
             area_id=area_id,
             capabilities=capabilities,
             config_entry_id=config_entry_id,
             device_id=device_id,
             disabled_by=disabled_by,
-            entity_category=_convert_to_entity_category(entity_category),
+            entity_category=entity_category,
             entity_id=entity_id,
             hidden_by=hidden_by,
             original_device_class=original_device_class,
@@ -518,8 +510,7 @@ class EntityRegistry:
         device_class: str | None | UndefinedType = UNDEFINED,
         device_id: str | None | UndefinedType = UNDEFINED,
         disabled_by: RegistryEntryDisabler | None | UndefinedType = UNDEFINED,
-        # Type str (ENTITY_CATEG*) is deprecated as of 2021.12, use EntityCategory
-        entity_category: EntityCategory | str | None | UndefinedType = UNDEFINED,
+        entity_category: EntityCategory | None | UndefinedType = UNDEFINED,
         hidden_by: RegistryEntryHider | None | UndefinedType = UNDEFINED,
         icon: str | None | UndefinedType = UNDEFINED,
         name: str | None | UndefinedType = UNDEFINED,
@@ -536,6 +527,15 @@ class EntityRegistry:
 
         new_values: dict[str, Any] = {}  # Dict with new key/value pairs
         old_values: dict[str, Any] = {}  # Dict with old key/value pairs
+
+        from .entity import EntityCategory  # pylint: disable=import-outside-toplevel
+
+        if (
+            entity_category
+            and entity_category is not UNDEFINED
+            and not isinstance(entity_category, EntityCategory)
+        ):
+            raise ValueError("entity_category must be a valid EntityCategory instance")
 
         if isinstance(disabled_by, str) and not isinstance(
             disabled_by, RegistryEntryDisabler
@@ -649,6 +649,8 @@ class EntityRegistry:
         )
         entities = EntityRegistryItems()
 
+        from .entity import EntityCategory  # pylint: disable=import-outside-toplevel
+
         if data is not None:
             for entity in data["entities"]:
                 # Some old installations can have some bad entities.
@@ -666,9 +668,9 @@ class EntityRegistry:
                     disabled_by=RegistryEntryDisabler(entity["disabled_by"])
                     if entity["disabled_by"]
                     else None,
-                    entity_category=_convert_to_entity_category(
-                        entity["entity_category"], raise_report=False
-                    ),
+                    entity_category=EntityCategory(entity["entity_category"])
+                    if entity["entity_category"]
+                    else None,
                     entity_id=entity["entity_id"],
                     hidden_by=entity["hidden_by"],
                     icon=entity["icon"],
